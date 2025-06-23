@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QTimer
 import time
-from ForwardingPipeline import ForwardingPipeline  # ← actualizado
+from ForwardingPipeline import ForwardingPipeline
 
 
 class Pipeline2Interface(QMainWindow):
@@ -21,6 +21,58 @@ class Pipeline2Interface(QMainWindow):
         self.fuente_mono = QFont("Courier New", 9)
 
         self._configurar_ui()
+        self._aplicar_estilos()
+
+    def _aplicar_estilos(self):
+        # Colores personalizados
+        fondo_general = "#F5F0CD"
+        fondo_secundario = "#578FCA"
+        encabezado = "#3674B5"
+        acento = "#FADA7A"
+
+        # Fondo general de la ventana
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {fondo_general};
+            }}
+            QGroupBox {{
+                background-color: {fondo_secundario};
+                font-weight: bold;
+                border: 2px solid {encabezado};
+                border-radius: 8px;
+                margin-top: 10px;
+            }}
+            QGroupBox:title {{
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px 0 3px;
+                color: white;
+                background-color: {encabezado};
+            }}
+            QPushButton {{
+                background-color: {encabezado};
+                color: white;
+                font-weight: bold;
+                border-radius: 5px;
+                padding: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {acento};
+                color: black;
+            }}
+            QLabel {{
+                font-weight: bold;
+            }}
+            QTextEdit {{
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 5px;
+            }}
+            QSpinBox {{
+                background-color: white;
+                border-radius: 5px;
+            }}
+        """)
 
     def _configurar_ui(self):
         self.central_widget = QWidget()
@@ -117,10 +169,10 @@ class Pipeline2Interface(QMainWindow):
 
     def _iniciar_simulacion(self):
         delay_s = self.spin_delay.value() / 1000.0
-        self.cpu = ForwardingPipeline(delay_s)  # ← clase actualizada
-        self.cpu.statusSignal.connect(self._actualizar_etapas)  # ← señal actualizada
+        self.cpu = ForwardingPipeline(delay_s)
+        self.cpu.statusSignal.connect(self._actualizar_etapas)
 
-        self.cpu.initialize_pipeline()  # ← método actualizado
+        self.cpu.initialize_pipeline()
         self.timer.start(self.spin_delay.value())
         self.inicio_tiempo = time.time()
         self.btn_iniciar.setEnabled(False)
@@ -133,7 +185,7 @@ class Pipeline2Interface(QMainWindow):
         self._actualizar_tiempo()
 
     def _ejecutar_ciclo(self):
-        if not self.cpu.advance_Fpipeline():  # ← método actualizado
+        if not self.cpu.advance_Fpipeline():
             self._detener_simulacion()
         self._actualizar_ui()
 
@@ -143,7 +195,7 @@ class Pipeline2Interface(QMainWindow):
         self._actualizar_ui()
 
     def _actualizar_ui(self):
-        self.txt_mensajes.append(f"PC actual: {self.cpu.pc}")  # ← atributo actualizado
+        self.txt_mensajes.append(f"PC actual: {self.cpu.pc}")
         self._actualizar_tiempo()
 
     def _actualizar_etapas(self, mensaje):
