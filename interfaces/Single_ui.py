@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QFont
 import time
-from SinglePhaseProcessor import SinglePhaseProcessor  # Nuevo nombre de clase
+from SinglePhaseProcessor import SinglePhaseProcessor
 
 
 class UniCycleInterface(QMainWindow):
@@ -22,7 +22,7 @@ class UniCycleInterface(QMainWindow):
         self.temporizador = QTimer()
         self.temporizador.timeout.connect(self.ejecutar_ciclo)
 
-        # --- Layout Principal
+        # Layout principal
         self.widget_central = QWidget()
         self.setCentralWidget(self.widget_central)
         self.layout_general = QVBoxLayout()
@@ -34,6 +34,51 @@ class UniCycleInterface(QMainWindow):
         self._crear_seccion_etapas(fuente_mono)
         self._crear_seccion_mensajes(fuente_mono)
         self._crear_seccion_tiempo(fuente_mono)
+        self._aplicar_estilos()
+
+    def _aplicar_estilos(self):
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #F5F0CD;
+            }
+            QGroupBox {
+                background-color: #578FCA;
+                border: 2px solid #3674B5;
+                border-radius: 8px;
+                font-weight: bold;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+                background-color: #3674B5;
+                color: white;
+            }
+            QPushButton {
+                background-color: #3674B5;
+                color: white;
+                font-weight: bold;
+                border-radius: 5px;
+                padding: 6px;
+            }
+            QPushButton:hover {
+                background-color: #FADA7A;
+                color: black;
+            }
+            QLabel {
+                font-weight: bold;
+            }
+            QTextEdit {
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 5px;
+            }
+            QSpinBox {
+                background-color: white;
+                border-radius: 5px;
+            }
+        """)
 
     def _crear_controles_superiores(self):
         box = QGroupBox("Controles de Simulación")
@@ -118,8 +163,8 @@ class UniCycleInterface(QMainWindow):
 
     def iniciar_simulacion(self):
         retardo = self.delay_spinbox.value() / 1000.0
-        self.cpu = SinglePhaseProcessor(retardo)  # ← cambia la clase
-        self.cpu.statusSignal.connect(self.actualizar_etapas)  # ← cambia la señal
+        self.cpu = SinglePhaseProcessor(retardo)
+        self.cpu.statusSignal.connect(self.actualizar_etapas)
         self.reiniciar_cpu()
 
         self.temporizador.start(self.delay_spinbox.value())
@@ -145,11 +190,11 @@ class UniCycleInterface(QMainWindow):
 
     def reiniciar_cpu(self):
         if self.cpu:
-            self.cpu._setup()  # ← cambia reset() por _setup()
+            self.cpu._setup()
             self.actualizar_info()
 
     def actualizar_info(self):
-        self.texto_mensajes.append(f"PC actual: {self.cpu.pc}")  # ← cambia PC por pc
+        self.texto_mensajes.append(f"PC actual: {self.cpu.pc}")
         self.actualizar_tiempo()
 
     def actualizar_etapas(self, mensaje):
