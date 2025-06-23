@@ -26,6 +26,67 @@ class MultiCycleInterface(QMainWindow):
         self._fuente_mono = QFont("Courier New", 9)
 
         self._configurar_ui()
+        self._aplicar_estilos()
+
+    def _aplicar_estilos(self):
+        fondo = "#F5F0CD"
+        encabezado = "#3674B5"
+        secundario = "#578FCA"
+        acento = "#FADA7A"
+
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {fondo};
+            }}
+            QGroupBox {{
+                background-color: {secundario};
+                font-weight: bold;
+                border: 2px solid {encabezado};
+                border-radius: 8px;
+                margin-top: 10px;
+            }}
+            QGroupBox:title {{
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+                color: white;
+                background-color: {encabezado};
+            }}
+            QPushButton {{
+                background-color: {encabezado};
+                color: white;
+                font-weight: bold;
+                border-radius: 5px;
+                padding: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {acento};
+                color: black;
+            }}
+            QLabel {{
+                font-weight: bold;
+            }}
+            QTextEdit {{
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 5px;
+            }}
+            QSpinBox {{
+                background-color: white;
+                border-radius: 5px;
+            }}
+            QTableWidget {{
+                background-color: white;
+                border: 1px solid gray;
+                border-radius: 5px;
+            }}
+            QHeaderView::section {{
+                background-color: {encabezado};
+                color: white;
+                font-weight: bold;
+                border: 1px solid gray;
+            }}
+        """)
 
     def _configurar_ui(self):
         self.widget_central = QWidget()
