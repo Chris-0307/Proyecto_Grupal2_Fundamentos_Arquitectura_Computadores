@@ -126,7 +126,7 @@ class ForwardingPipeline(QThread):
                 return self.pipeline_regs[stg].get("ALU")
         return self.registers[idx]
 
-    def advance_pipeline(self):
+    def advance_Fpipeline(self):
         self._writeback()
         self._memory()
         self._execute()
@@ -140,4 +140,4 @@ class ForwardingPipeline(QThread):
         else:
             self.inactive_cycles = 0
 
-        return self.inactive_cycles < 2  # se detendrá tras 2 ciclos completamente inactivos
+        return self.inactive_cycles < 2

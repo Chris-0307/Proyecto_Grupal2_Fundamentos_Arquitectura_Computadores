@@ -19,13 +19,14 @@ class SegmentedProcessor(QThread):
         self.instr_mem = [None] * 256
         combined = Memory().combined_memory
         self.ram[:len(combined)] = combined
+        self.inactive_cycles = 0
         self.data_mem = [0] * 1024
         self.pc = 0
         self.stages = {
-            "IF_ID": {},
-            "ID_EX": {},
-            "EX_MEM": {},
-            "MEM_WB": {}
+            "IF_ID": {},        # Instruction Fetch - Instruction Decode
+            "ID_EX": {},        # Instruction Decode - Execute
+            "EX_MEM": {},       # Instruction Execute - Memory
+            "MEM_WB": {}        # Memory - WriteBack
         }
         self.total_instructions = self._load_mem()
 
@@ -46,6 +47,7 @@ class SegmentedProcessor(QThread):
     def stage_fetch(self):
         if self.pc < self.total_instructions:
             self.stages["IF_ID"]["IR"] = self.instr_mem[self.pc]
+            print(f"[FETCH] PC={self.pc}, IR={self.instr_mem[self.pc]}")
             self.stages["IF_ID"]["NPC"] = self.pc + 1
             self.pc += 1
             self.statusSignal.emit(f"Fetch: {self.stages['IF_ID']['IR']}")
@@ -57,6 +59,7 @@ class SegmentedProcessor(QThread):
         ir = self.stages["IF_ID"].get("IR")
         if ir:
             self.stages["ID_EX"] = {"A": self.regs[ir.rs],"B": self.regs[ir.rt],"IR": ir}
+            print(f"[DECODE] IR={ir}, rs=R{ir.rs}={self.regs[ir.rs]}, rt=R{ir.rt}={self.regs[ir.rt]}")
             self.statusSignal.emit(f"Decode: A = {self.stages['ID_EX']['A']}, B = {self.stages['ID_EX']['B']}")
         else:
             self.stages["ID_EX"]["IR"] = None
@@ -85,6 +88,7 @@ class SegmentedProcessor(QThread):
                 case 'ADDI': result = a + imm
                 case 'SUBI': result = a - imm
 
+            print(f"[EXECUTE] IR={ir}, A={a}, B={b}, Result={result}")
             self.stages["EX_MEM"] = {"ALU": result,"IR": ir}
             self.statusSignal.emit(f"Execute: ALU = {result}")
         else:
@@ -99,8 +103,10 @@ class SegmentedProcessor(QThread):
 
             if ir.opcode == 'LOAD':
                 self.stages["MEM_WB"]["MDR"] = self.data_mem[address]
+                print(f"[MEMORY] LOAD from addr {address} → {self.data_mem[address]}")
             elif ir.opcode == 'STORE':
                 self.data_mem[address] = self.stages["ID_EX"]["B"]
+
 
             mdr = self.stages["MEM_WB"].get("MDR", "N/A")
             self.statusSignal.emit(f"Memory: MDR = {mdr}")
@@ -130,25 +136,54 @@ class SegmentedProcessor(QThread):
         self.stage_writeback()
         self.stage_memory()
         self.stage_execute()
-        self.stage_decode()
-        self.stage_fetch()
 
         if self.data_conflict():
             self.insert_stall()
 
-        active = any(stage for stage in self.stages.values() if stage.get("IR"))
-        return not (self.pc >= self.total_instructions and not active)
+        else:
+            self.stage_decode()
+            self.stage_fetch()
+
+        active = any(stage.get("IR") for stage in self.stages.values())
+
+        if not active and self.pc >= self.total_instructions:
+            self.inactive_cycles += 1
+        else:
+            self.inactive_cycles = 0
+
+        return self.inactive_cycles < 2  # Detener tras 2 ciclos completamente inactivos
 
 # Verifica si hay conflicto de datos entre instrucciones en EX y MEM
     def data_conflict(self):
-        ir_ex = self.stages["ID_EX"].get("IR")
-        ir_mem = self.stages["EX_MEM"].get("IR")
-        if ir_ex and ir_mem:
-            if hasattr(ir_mem, 'rd') and (ir_ex.rs == ir_mem.rd or ir_ex.rt == ir_mem.rd):
-                return True
+        decode_ir = self.stages["IF_ID"].get("IR")
+        if not decode_ir:
+            return False
+
+        src_regs = {decode_ir.rs, decode_ir.rt} - {0}
+
+        # Instrucciones en etapas que aún no escriben
+        for stage_name in ["ID_EX", "EX_MEM", "MEM_WB"]:
+            ir = self.stages[stage_name].get("IR")
+            if not ir:
+                continue
+
+            # Determinar el destino de esa instrucción
+            dest = None
+            if ir.opcode in ['ADD', 'SUB', 'MUL', 'AND', 'OR', 'XOR', 'SLT']:
+                dest = ir.rd
+            elif ir.opcode in ['ADDI', 'SUBI', 'LOAD']:
+                dest = ir.rt
+            # STORE y ramas no escriben en registro
+
+            if dest and dest in src_regs:
+                return True  # ¡hazard detectado!
+
         return False
 
-# Inserta un ciclo de burbuja (stall) debido a dependencia de datos
+    # Inserta un ciclo de burbuja (stall) debido a dependencia de datos
     def insert_stall(self):
-        self.stages["IF_ID"] = {"IR": None, "NPC": None}
-        self.statusSignal.emit("⚠ Pipeline stalled due to data hazard")
+        ir = self.stages["IF_ID"].get("IR")
+        msg = f"⚠ STALL: Instrucción {ir} necesita datos aún no escritos."
+        self.stages["ID_EX"] = {"IR": None}
+        self.stages["IF_ID"] = {"IR": None}
+        self.statusSignal.emit(msg)

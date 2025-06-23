@@ -133,12 +133,12 @@ class Pipeline2Interface(QMainWindow):
         self._actualizar_tiempo()
 
     def _ejecutar_ciclo(self):
-        if not self.cpu.advance_pipeline():  # ← método actualizado
+        if not self.cpu.advance_Fpipeline():  # ← método actualizado
             self._detener_simulacion()
         self._actualizar_ui()
 
     def _ejecutar_paso(self):
-        if not self.cpu.advance_pipeline():
+        if not self.cpu.advance_Fpipeline():
             self.btn_paso.setEnabled(False)
         self._actualizar_ui()
 
