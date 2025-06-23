@@ -4,10 +4,10 @@ from PyQt5.QtWidgets import (
     QPushButton, QGroupBox, QLabel, QSizePolicy
 )
 from PyQt5.QtGui import QFont
-from interfaces.uniciclo_ui import UniCycleInterface
-from interfaces.multiciclo_ui import MultiCycleInterface
-from interfaces.pipeline1_ui import Pipeline1Interface
-from interfaces.pipeline2_ui import Pipeline2Interface
+from interfaces.Single_ui import UniCycleInterface
+from interfaces.Multi_ui import MultiCycleInterface
+from interfaces.Segmented_ui import Pipeline1Interface
+from interfaces.Forwarding_ui import Pipeline2Interface
 
 
 class MainSimulatorWindow(QMainWindow):

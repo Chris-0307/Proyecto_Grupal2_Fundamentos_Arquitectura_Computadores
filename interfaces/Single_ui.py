@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QFont
 import time
-from uniciclo import UniCycleCPU
+from SinglePhaseProcessor import SinglePhaseProcessor  # Nuevo nombre de clase
 
 
 class UniCycleInterface(QMainWindow):
@@ -39,14 +39,12 @@ class UniCycleInterface(QMainWindow):
         box = QGroupBox("Controles de Simulación")
         layout = QHBoxLayout()
 
-        # Retardo
         layout.addWidget(QLabel("Retardo (ms):"))
         self.delay_spinbox = QSpinBox()
         self.delay_spinbox.setRange(0, 1000)
         self.delay_spinbox.setValue(100)
         layout.addWidget(self.delay_spinbox)
 
-        # Botones
         self.btn_iniciar = QPushButton("▶ Iniciar")
         self.btn_iniciar.clicked.connect(self.iniciar_simulacion)
         layout.addWidget(self.btn_iniciar)
@@ -72,7 +70,7 @@ class UniCycleInterface(QMainWindow):
         grid = QGridLayout()
         self.secciones = {}
 
-        nombres = ["Fetched", "Decoded", "Executed", "Memory Access", "Write Back"]
+        nombres = ["Fetch", "Decode", "Execute", "Memory", "WriteBack"]
         for i, nombre in enumerate(nombres):
             etiqueta = QLabel(nombre)
             area = QTextEdit()
@@ -120,8 +118,8 @@ class UniCycleInterface(QMainWindow):
 
     def iniciar_simulacion(self):
         retardo = self.delay_spinbox.value() / 1000.0
-        self.cpu = UniCycleCPU(retardo)
-        self.cpu.messageChanged.connect(self.actualizar_etapas)
+        self.cpu = SinglePhaseProcessor(retardo)  # ← cambia la clase
+        self.cpu.statusSignal.connect(self.actualizar_etapas)  # ← cambia la señal
         self.reiniciar_cpu()
 
         self.temporizador.start(self.delay_spinbox.value())
@@ -136,22 +134,22 @@ class UniCycleInterface(QMainWindow):
         self.actualizar_tiempo()
 
     def ejecutar_ciclo(self):
-        if not self.cpu.run_cycle():
+        if not self.cpu.Scycle():
             self.detener_simulacion()
         self.actualizar_info()
 
     def ejecutar_paso(self):
-        if not self.cpu.run_cycle():
+        if not self.cpu.Scycle():
             self.btn_paso.setEnabled(False)
         self.actualizar_info()
 
     def reiniciar_cpu(self):
         if self.cpu:
-            self.cpu.reset()
+            self.cpu._setup()  # ← cambia reset() por _setup()
             self.actualizar_info()
 
     def actualizar_info(self):
-        self.texto_mensajes.append(f"PC actual: {self.cpu.PC}")
+        self.texto_mensajes.append(f"PC actual: {self.cpu.pc}")  # ← cambia PC por pc
         self.actualizar_tiempo()
 
     def actualizar_etapas(self, mensaje):

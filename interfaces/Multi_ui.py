@@ -4,10 +4,10 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem, QMessageBox
 )
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtGui import QFont
 import os
 import time
-from multiciclo import MultiCycleCPU
+from MultiPhaseProcessor import MultiStageProcessor
 
 
 class MultiCycleInterface(QMainWindow):
@@ -16,8 +16,8 @@ class MultiCycleInterface(QMainWindow):
         self.setWindowTitle("Multiciclo - Simulador CPU RISC-V")
         self.setFixedSize(950, 700)
 
-        self.cpu = MultiCycleCPU()
-        self.cpu.messageChanged.connect(self._mostrar_mensajes)
+        self.cpu = MultiStageProcessor()
+        self.cpu.statusUpdate.connect(self._mostrar_mensajes)
 
         self.temporizador = QTimer()
         self.temporizador.timeout.connect(self._ejecutar_ciclo)
@@ -45,7 +45,7 @@ class MultiCycleInterface(QMainWindow):
         layout.addWidget(QLabel("Retardo (ms):"))
         self.spin_delay = QSpinBox()
         self.spin_delay.setRange(0, 100)
-        self.spin_delay.setValue(30)
+        self.spin_delay.setValue(5)
         layout.addWidget(self.spin_delay)
 
         layout.addWidget(QLabel("Datos a mostrar:"))
@@ -89,8 +89,6 @@ class MultiCycleInterface(QMainWindow):
         self._vista_fsm.setFixedHeight(70)
         self._vista_pc.setFixedHeight(70)
 
-
-
         box = QGroupBox("Estado Actual del Procesador")
         box.setLayout(grid)
         self.layout_principal.addWidget(box)
@@ -120,7 +118,7 @@ class MultiCycleInterface(QMainWindow):
     # ----------- Lógica de ejecución -----------
 
     def _iniciar_simulacion(self):
-        self.cpu.reset()
+        self.cpu.initialize()
         self.temporizador.start(self.spin_delay.value() * 10)
         self.cpu.start_time = time.time()
         self.btn_iniciar.setEnabled(False)
@@ -134,17 +132,17 @@ class MultiCycleInterface(QMainWindow):
         self.btn_paso.setEnabled(True)
 
     def _ejecutar_ciclo(self):
-        if not self.cpu.run_cycle():
+        if not self.cpu.Mcycle():
             self._detener_simulacion()
         self._actualizar_vistas()
 
     def _paso_manual(self):
-        if not self.cpu.run_cycle():
+        if not self.cpu.Mcycle():
             self.btn_paso.setEnabled(False)
         self._actualizar_vistas()
 
     def _reiniciar(self):
-        self.cpu.reset()
+        self.cpu.initialize()
         self.btn_paso.setEnabled(True)
         self._actualizar_vistas()
 
@@ -158,12 +156,11 @@ class MultiCycleInterface(QMainWindow):
         tiempo = time.time() - self.cpu.start_time if self.cpu.start_time else 0
 
         self._vista_pc.setPlainText(f"PC: {self.cpu.PC}")
-        self._vista_fsm.setPlainText(f"FSM: {self.cpu.state}")
-        self._vista_registros.setPlainText(str(self.cpu.registers))
+        self._vista_fsm.setPlainText(f"FSM: {self.cpu.phase}")
+        self._vista_registros.setPlainText(str(self.cpu.regs))
 
         n = self.spin_memoria.value()
-        self._vista_memoria.setPlainText(str(self.cpu.data_memory[:n]))
-
+        self._vista_memoria.setPlainText(str(self.cpu.data_mem[:n]))
 
         self._registrar_historial("Multiciclo", self.cpu.PC, tiempo)
 
