@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QPushButton, QGroupBox, QLabel, QSizePolicy
+    QHBoxLayout, QPushButton, QGroupBox
 )
 from PyQt5.QtGui import QFont
 from interfaces.Single_ui import UniCycleInterface
@@ -14,14 +14,14 @@ class MainSimulatorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simulador de CPUs - Arquitectura RISC-V")
-        self.setFixedSize(500, 400)
+        self.setFixedSize(950, 200)
+        self.setStyleSheet("background-color: #3674B5;")  # Fondo principal
 
-        self._fuente_titulo = QFont("Arial", 14, QFont.Bold)
-        self._fuente_botones = QFont("Segoe UI", 11)
+        self._fuente_titulo = QFont("Arial", 16, QFont.Bold)
+        self._fuente_botones = QFont("Segoe UI", 13)
 
         self._inicializar_ui()
 
-        # Ventanas hijas
         self.ventana_uniciclo = None
         self.ventana_multiciclo = None
         self.ventana_pipeline1 = None
@@ -33,23 +33,28 @@ class MainSimulatorWindow(QMainWindow):
 
         layout_principal = QVBoxLayout()
         layout_principal.setContentsMargins(30, 30, 30, 30)
-        layout_principal.setSpacing(20)
+        layout_principal.setSpacing(30)
         self.widget_central.setLayout(layout_principal)
 
-
         grupo_opciones = QGroupBox("")
-        layout_botones = QVBoxLayout()
-        layout_botones.setSpacing(12)
+        grupo_opciones.setStyleSheet("""
+            QGroupBox {
+                background-color: #F5F0CD;
+                border: 2px solid #FADA7A;
+                border-radius: 10px;
+            }
+        """)
 
-        # Botones de selección
-        self.btn_uniciclo = QPushButton("Uniciclo")
-        self.btn_multiciclo = QPushButton("Multiciclo")
-        self.btn_pipeline1 = QPushButton("Pipeline Básico")
-        self.btn_pipeline2 = QPushButton("Pipeline con Forwarding")
+        layout_botones = QHBoxLayout()
+        layout_botones.setSpacing(20)
+
+        # Crear y aplicar estilo a los botones
+        self.btn_uniciclo = self._crear_boton("Uniciclo")
+        self.btn_multiciclo = self._crear_boton("Multiciclo")
+        self.btn_pipeline1 = self._crear_boton("Pipeline Básico")
+        self.btn_pipeline2 = self._crear_boton("Pipeline con Forwarding")
 
         for btn in [self.btn_uniciclo, self.btn_multiciclo, self.btn_pipeline1, self.btn_pipeline2]:
-            btn.setFont(self._fuente_botones)
-            btn.setMinimumHeight(40)
             layout_botones.addWidget(btn)
 
         self.btn_uniciclo.clicked.connect(self.abrir_uniciclo)
@@ -59,6 +64,25 @@ class MainSimulatorWindow(QMainWindow):
 
         grupo_opciones.setLayout(layout_botones)
         layout_principal.addWidget(grupo_opciones)
+
+    def _crear_boton(self, texto):
+        btn = QPushButton(texto)
+        btn.setFont(self._fuente_botones)
+        btn.setMinimumHeight(60)
+        btn.setMinimumWidth(160)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: #578FCA;
+                color: #FFFFFF;
+                border: 2px solid #FADA7A;
+                border-radius: 10px;
+            }
+            QPushButton:hover {
+                background-color: #FADA7A;
+                color: #3674B5;
+            }
+        """)
+        return btn
 
     # --- Métodos para abrir interfaces específicas ---
     def abrir_uniciclo(self):
