@@ -2,150 +2,154 @@ import time
 from memory import *
 from PyQt5.QtCore import QThread, pyqtSignal
 
-class SegmentedCPU1(QThread):
+class PipelineCPU(QThread):
     messageChanged = pyqtSignal(str)
 
-    def __init__(self, delay_seconds=1):
+    def __init__(self, cycleTime=1):
         super().__init__()
-        self.delay = delay_seconds
-        self.initialize()
+        self.cycleTime = cycleTime  # Time taken by each cycle in seconds
+        self.reset()
 
-    def initialize(self):
-        self.start_clock = time.time()
-        self.reg_bank = [0] * 32
-        self.main_mem = [0] * 1024
-        self.instr_mem = [None] * 256
-        preload = Memory().combined_memory
-        self.main_mem[:len(preload)] = preload
-        self.data_mem = [0] * 1024
-        self.pc = 0
-        self.stage_regs = {
-            "FETCH_DECODE": {},
-            "DECODE_EXEC": {},
-            "EXEC_MEM": {},
-            "MEM_WB": {}
+    def reset(self):
+        self.start_time = time.time()
+        self.registers = [0] * 32  # General purpose registers
+        self.memory = [0] * 1024  # Single unified memory for both instructions and data
+        self.instruction_memory = [None] * 256  # Instruction memory
+        combined_memory = Memory().combined_memory
+        self.memory[:len(combined_memory)] = combined_memory  # Load combined memory into the CPU memory
+        self.data_memory = [0] * 1024  # Data memory
+        self.PC = 0  # Program counter
+        self.pipeline_registers = {
+            "IF/ID": {},
+            "ID/EX": {},
+            "EX/MEM": {},
+            "MEM/WB": {}
         }
-        self.total_instructions = self.extract_instructions()
+        self.instruction_count = self.separate_memory()  # Separate memory and get instruction count
 
     def fetch(self):
-        if self.pc < self.total_instructions:
-            self.stage_regs["FETCH_DECODE"]["IR"] = self.instr_mem[self.pc]
-            self.stage_regs["FETCH_DECODE"]["NPC"] = self.pc + 1
-            self.pc += 1
-            self.messageChanged.emit(f"Fetched: {self.stage_regs['FETCH_DECODE']['IR']}")
+        if self.PC < self.instruction_count:
+            self.pipeline_registers["IF/ID"]["IR"] = self.instruction_memory[self.PC]
+            self.pipeline_registers["IF/ID"]["NPC"] = self.PC + 1
+            self.PC += 1
+            self.messageChanged.emit(f"Fetched: {self.pipeline_registers['IF/ID']['IR']}")
         else:
-            self.stage_regs["FETCH_DECODE"]["IR"] = None
+            self.pipeline_registers["IF/ID"]["IR"] = None
 
     def decode(self):
-        instr = self.stage_regs["FETCH_DECODE"].get("IR")
-        if instr:
-            self.stage_regs["DECODE_EXEC"]["A"] = self.reg_bank[instr.rs]
-            self.stage_regs["DECODE_EXEC"]["B"] = self.reg_bank[instr.rt]
-            self.stage_regs["DECODE_EXEC"]["IR"] = instr
-            self.messageChanged.emit(f"Decoded: A = {self.stage_regs['DECODE_EXEC']['A']}, B = {self.stage_regs['DECODE_EXEC']['B']}")
+        ir = self.pipeline_registers["IF/ID"].get("IR")
+        if ir:
+            self.pipeline_registers["ID/EX"]["A"] = self.registers[ir.rs]
+            self.pipeline_registers["ID/EX"]["B"] = self.registers[ir.rt]
+            self.pipeline_registers["ID/EX"]["IR"] = ir
+            self.messageChanged.emit(f"Decoded: A = {self.pipeline_registers['ID/EX']['A']}, B = {self.pipeline_registers['ID/EX']['B']}")
         else:
-            self.stage_regs["DECODE_EXEC"]["IR"] = None
+            self.pipeline_registers["ID/EX"]["IR"] = None
 
     def execute(self):
-        instr = self.stage_regs["DECODE_EXEC"].get("IR")
-        if instr:
-            A = self.stage_regs["DECODE_EXEC"]["A"]
-            B = self.stage_regs["DECODE_EXEC"]["B"]
-            result = None
-            if instr.opcode == 'ADD':
-                result = A + B
-            elif instr.opcode == 'SUB':
-                result = A - B
-            elif instr.opcode == 'MUL':
-                result = A * B
-            elif instr.opcode in ['LOAD', 'STORE']:
-                result = A + instr.imm
-            elif instr.opcode == 'JUMP':
-                result = self.pc + instr.imm
-            elif instr.opcode == 'BEQ':
-                result = self.pc + instr.imm if A == B else self.pc
-            elif instr.opcode == 'BNE':
-                result = self.pc + instr.imm if A != B else self.pc
-            elif instr.opcode == 'AND':
-                result = A & B
-            elif instr.opcode == 'OR':
-                result = A | B
-            elif instr.opcode == 'XOR':
-                result = A ^ B
-            elif instr.opcode == 'SLT':
-                result = 1 if A < B else 0
-            elif instr.opcode == 'ADDI':
-                result = A + instr.imm
-            elif instr.opcode == 'SUBI':
-                result = A - instr.imm
-
-            self.stage_regs["EXEC_MEM"]["ALU_RESULT"] = result
-            self.stage_regs["EXEC_MEM"]["IR"] = instr
-            self.messageChanged.emit(f"Executed: ALUOut = {result}")
+        ir = self.pipeline_registers["ID/EX"].get("IR")
+        if ir:
+            A = self.pipeline_registers["ID/EX"]["A"]
+            B = self.pipeline_registers["ID/EX"]["B"]
+            if ir.opcode == 'ADD':
+                ALUOut = A + B
+            elif ir.opcode == 'SUB':
+                ALUOut = A - B
+            elif ir.opcode == 'MUL':
+                ALUOut = A * B
+            elif ir.opcode == 'LOAD':
+                ALUOut = A + ir.imm
+            elif ir.opcode == 'STORE':
+                ALUOut = A + ir.imm
+            elif ir.opcode == 'JUMP':
+                ALUOut = self.PC + ir.imm
+            elif ir.opcode == 'BEQ':
+                ALUOut = self.PC + ir.imm if A == B else self.PC
+            elif ir.opcode == 'AND':
+                ALUOut = A & B
+            elif ir.opcode == 'OR':
+                ALUOut = A | B
+            elif ir.opcode == 'XOR':
+                ALUOut = A ^ B
+            elif ir.opcode == 'SLT':
+                ALUOut = 1 if A < B else 0
+            elif ir.opcode == 'ADDI':
+                ALUOut = A + ir.imm
+            elif ir.opcode == 'SUBI':
+                ALUOut = A - ir.imm
+            elif ir.opcode == 'BNE':
+                ALUOut = self.PC + ir.imm if A != B else self.PC
+            self.pipeline_registers["EX/MEM"]["ALUOut"] = ALUOut
+            self.pipeline_registers["EX/MEM"]["IR"] = ir
+            self.messageChanged.emit(f"Executed: ALUOut = {ALUOut}")
         else:
-            self.stage_regs["EXEC_MEM"]["IR"] = None
+            self.pipeline_registers["EX/MEM"]["IR"] = None
 
-    def memory_stage(self):
-        instr = self.stage_regs["EXEC_MEM"].get("IR")
-        if instr:
-            addr = self.stage_regs["EXEC_MEM"]["ALU_RESULT"]
-            if instr.opcode == 'LOAD':
-                mdr = self.data_mem[addr]
-                self.stage_regs["MEM_WB"]["MDR"] = mdr
-            elif instr.opcode == 'STORE':
-                self.data_mem[addr] = self.stage_regs["DECODE_EXEC"]["B"]
-
-            self.stage_regs["MEM_WB"]["ALU_RESULT"] = addr
-            self.stage_regs["MEM_WB"]["IR"] = instr
-            self.messageChanged.emit(f"Memory Access: MDR = {self.stage_regs['MEM_WB'].get('MDR', 'N/A')}")
+    def memory_access(self):
+        ir = self.pipeline_registers["EX/MEM"].get("IR")
+        if ir:
+            ALUOut = self.pipeline_registers["EX/MEM"]["ALUOut"]
+            if ir.opcode == 'LOAD':
+                MDR = self.data_memory[ALUOut]
+                self.pipeline_registers["MEM/WB"]["MDR"] = MDR
+            elif ir.opcode == 'STORE':
+                self.data_memory[ALUOut] = self.pipeline_registers["ID/EX"]["B"]
+            self.pipeline_registers["MEM/WB"]["ALUOut"] = ALUOut
+            self.pipeline_registers["MEM/WB"]["IR"] = ir
+            self.messageChanged.emit(f"Memory Access: MDR = {self.pipeline_registers.get('MEM/WB', {}).get('MDR', 'N/A')}")
         else:
-            self.stage_regs["MEM_WB"]["IR"] = None
+            self.pipeline_registers["MEM/WB"]["IR"] = None
 
     def write_back(self):
-        instr = self.stage_regs["MEM_WB"].get("IR")
-        if instr:
-            if instr.opcode in ['ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLT', 'MUL']:
-                self.reg_bank[instr.rd] = self.stage_regs["MEM_WB"]["ALU_RESULT"]
-            elif instr.opcode == 'LOAD':
-                self.reg_bank[instr.rt] = self.stage_regs["MEM_WB"]["MDR"]
-            elif instr.opcode in ['ADDI', 'SUBI']:
-                self.reg_bank[instr.rt] = self.stage_regs["MEM_WB"]["ALU_RESULT"]
-            elif instr.opcode in ['JUMP', 'BEQ', 'BNE']:
-                self.pc = self.stage_regs["MEM_WB"]["ALU_RESULT"]
-            self.messageChanged.emit(f"Write Back: Registers = {self.reg_bank}")
+        ir = self.pipeline_registers["MEM/WB"].get("IR")
+        if ir:
+            if ir.opcode in ['ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLT', 'MUL']:
+                self.registers[ir.rd] = self.pipeline_registers["MEM/WB"]["ALUOut"]
+            elif ir.opcode == 'LOAD':
+                self.registers[ir.rt] = self.pipeline_registers["MEM/WB"]["MDR"]
+            elif ir.opcode in ['JUMP', 'BEQ', 'BNE']:
+                self.PC = self.pipeline_registers["MEM/WB"]["ALUOut"]
+            elif ir.opcode in ['ADDI', 'SUBI']:
+                self.registers[ir.rt] = self.pipeline_registers["MEM/WB"]["ALUOut"]
+            self.messageChanged.emit(f"Write Back: Registers = {self.registers}")
 
     def run_cycle(self):
+        # Run pipeline stages in reverse order to simulate parallel execution
         self.write_back()
-        self.memory_stage()
+        self.memory_access()
         self.execute()
         self.decode()
         self.fetch()
 
-        if self.check_data_hazard():
-            self.inject_stall()
+        # Check for stalls
+        if self.detect_hazard():
+            self.stall_pipeline()
 
-        pipeline_empty = all(not reg for reg in self.stage_regs.values())
-        return not (self.pc >= self.total_instructions and pipeline_empty)
+        # Check for end of program
+        if self.PC >= self.instruction_count and not any(self.pipeline_registers.values()):
+            return False
+        return True
 
-    def check_data_hazard(self):
-        current = self.stage_regs["DECODE_EXEC"].get("IR")
-        prev = self.stage_regs["EXEC_MEM"].get("IR")
-        if current and prev:
-            return current.rs == prev.rd or current.rt == prev.rd
+    def detect_hazard(self):
+        ir_ex = self.pipeline_registers["ID/EX"].get("IR")
+        ir_mem = self.pipeline_registers["EX/MEM"].get("IR")
+        if ir_ex and ir_mem:
+            if ir_ex.rs == ir_mem.rd or ir_ex.rt == ir_mem.rd:
+                return True
         return False
 
-    def inject_stall(self):
-        self.stage_regs["FETCH_DECODE"] = {"IR": None, "NPC": None}
-        self.messageChanged.emit("Pipeline stalled due to hazard")
+    def stall_pipeline(self):
+        self.pipeline_registers["IF/ID"] = {"IR": None, "NPC": None}
+        self.messageChanged.emit("Pipeline stalled due to data hazard")
 
-    def extract_instructions(self):
-        count = 0
-        for i, entry in enumerate(self.main_mem):
+    def separate_memory(self):
+        instruction_count = 0
+        for i, entry in enumerate(self.memory):
             if isinstance(entry, Instruction):
-                self.instr_mem[count] = entry
-                count += 1
+                self.instruction_memory[instruction_count] = entry
+                instruction_count += 1
             else:
                 break
-        for j in range(count, len(self.main_mem)):
-            self.data_mem[j - count] = self.main_mem[j]
-        return count
+        for j in range(instruction_count, len(self.memory)):
+            self.data_memory[j - instruction_count] = self.memory[j]
+        return instruction_count
