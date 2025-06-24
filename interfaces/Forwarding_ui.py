@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QSpinBox, QTextEdit, QGroupBox, QGridLayout, QSizePolicy
+    QSpinBox, QTextEdit, QGroupBox, QGridLayout, QSizePolicy, QTableWidget, QTableWidgetItem
 )
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QTimer
@@ -84,6 +84,7 @@ class Pipeline2Interface(QMainWindow):
         self._crear_etapas_pipeline()
         self._crear_consola_mensajes()
         self._crear_seccion_tiempo()
+        self._crear_seccion_metricas()
 
     def _crear_seccion_controles(self):
         box = QGroupBox("Controles de Simulación")
@@ -165,6 +166,21 @@ class Pipeline2Interface(QMainWindow):
         box.setLayout(layout)
         self.layout_principal.addWidget(box)
 
+    def _crear_seccion_metricas(self):
+        box = QGroupBox("Métricas de Ejecución (Últimas 10)")
+        layout = QVBoxLayout()
+
+        self.tabla_metricas = QTableWidget(10, 3)  # 10 filas, 3 columnas
+        self.tabla_metricas.setHorizontalHeaderLabels(["CPI", "Ciclos", "Instrucciones"])
+        self.tabla_metricas.verticalHeader().setVisible(False)
+        self.tabla_metricas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        layout.addWidget(self.tabla_metricas)
+        box.setLayout(layout)
+        self.layout_principal.addWidget(box)
+
+        self.historial_metricas = []
+
     # ----------------- Lógica -----------------
 
     def _iniciar_simulacion(self):
@@ -183,6 +199,10 @@ class Pipeline2Interface(QMainWindow):
         self.btn_iniciar.setEnabled(True)
         self.btn_detener.setEnabled(False)
         self._actualizar_tiempo()
+        total_inst = self.cpu.inst_count
+        total_ciclos = self.cpu.inactive_cycles + self.cpu.pc
+        cpi = total_ciclos / total_inst if total_inst > 0 else 0
+        self._guardar_metricas(cpi, total_ciclos, total_inst)
 
     def _ejecutar_ciclo(self):
         if not self.cpu.advance_Fpipeline():
@@ -209,3 +229,16 @@ class Pipeline2Interface(QMainWindow):
         if self.inicio_tiempo:
             transcurrido = time.time() - self.inicio_tiempo
             self.txt_tiempo.setPlainText(f"{transcurrido:.2f}")
+
+    def _guardar_metricas(self, cpi, ciclos, instrucciones):
+        if len(self.historial_metricas) >= 10:
+            self.historial_metricas.pop(0)
+        self.historial_metricas.append((round(cpi, 2), ciclos, instrucciones))
+        self._actualizar_tabla_metricas()
+
+    def _actualizar_tabla_metricas(self):
+        self.tabla_metricas.clearContents()
+        for fila, (cpi, ciclos, inst) in enumerate(self.historial_metricas):
+            self.tabla_metricas.setItem(fila, 0, QTableWidgetItem(str(cpi)))
+            self.tabla_metricas.setItem(fila, 1, QTableWidgetItem(str(ciclos)))
+            self.tabla_metricas.setItem(fila, 2, QTableWidgetItem(str(inst)))
