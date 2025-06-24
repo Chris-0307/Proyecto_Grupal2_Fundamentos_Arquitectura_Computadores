@@ -47,9 +47,9 @@ add x30, x7, x0     # Se salta
 add x31, x1, x2     # Se ejecuta
 
 # ---------- Escritura en memoria ----------
-sw x11, 8(x0)      # mem[8] = x11
-sw x14, 9(x0)      # mem[9] = x14
-sw x17, 10(x0)     # mem[10] = x17
-sw x20, 11(x0)     # mem[11] = x20
+sw x11, 2(x0)      # mem[8] = x11
+sw x14, 3(x0)      # mem[9] = x14
+sw x17, 4(x0)     # mem[10] = x17
+sw x20, 5(x0)     # mem[11] = x20
 
 lw x2, 8(x0)

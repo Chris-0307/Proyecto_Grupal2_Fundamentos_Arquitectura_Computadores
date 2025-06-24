@@ -12,13 +12,14 @@ class Pipeline1Interface(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pipeline Básico - Simulador RISC-V")
-        self.setFixedSize(900, 640)
+        self.setFixedSize(900, 740)
 
         self.cpu = None
         self.timer = QTimer()
         self.timer.timeout.connect(self._ejecutar_ciclo)
         self.inicio_tiempo = None
         self.fuente_mono = QFont("Courier New", 9)
+        self.ciclo_actual = 0
 
         self._configurar_ui()
         self._aplicar_estilos()
@@ -81,8 +82,8 @@ class Pipeline1Interface(QMainWindow):
         self._crear_seccion_controles()
         self._crear_seccion_etapas()
         self._crear_consola_mensajes()
-        self._crear_seccion_tiempo()
         self._crear_seccion_metricas()
+        self._crear_panel_info()
 
     def _crear_seccion_controles(self):
         box = QGroupBox("Controles del Pipeline")
@@ -111,8 +112,12 @@ class Pipeline1Interface(QMainWindow):
         self.btn_volver.clicked.connect(self.close)
         layout.addWidget(self.btn_volver)
 
+        self.label_tiempo = QLabel("Tiempo: 0.00s")
+        layout.addWidget(self.label_tiempo)
+
         box.setLayout(layout)
         self.layout_principal.addWidget(box)
+
 
     def _crear_seccion_etapas(self):
         box = QGroupBox("Etapas del Pipeline")
@@ -125,7 +130,7 @@ class Pipeline1Interface(QMainWindow):
             area = QTextEdit()
             area.setReadOnly(True)
             area.setFont(self.fuente_mono)
-            area.setFixedHeight(70)
+            area.setFixedHeight(35)
             area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
             grid.addWidget(etiqueta, i, 0)
@@ -143,6 +148,7 @@ class Pipeline1Interface(QMainWindow):
         self.txt_mensajes.setFont(self.fuente_mono)
         self.txt_mensajes.setReadOnly(True)
         layout.addWidget(self.txt_mensajes)
+        self.txt_mensajes.setFixedHeight(35)
 
         box.setLayout(layout)
         self.layout_principal.addWidget(box)
@@ -156,7 +162,7 @@ class Pipeline1Interface(QMainWindow):
         self.txt_tiempo.setReadOnly(True)
         self.txt_tiempo.setFont(self.fuente_mono)
         self.txt_tiempo.setFixedWidth(100)
-        self.txt_tiempo.setFixedHeight(30)
+        self.txt_tiempo.setFixedHeight(20)
 
         layout.addWidget(self.label_tiempo)
         layout.addWidget(self.txt_tiempo)
@@ -169,16 +175,45 @@ class Pipeline1Interface(QMainWindow):
         layout = QVBoxLayout()
 
         self.tabla_metricas = QTableWidget(10, 3)  # 3 métricas
+        self.tabla_metricas.setFixedHeight(100)
         self.tabla_metricas.setHorizontalHeaderLabels(["CPI", "Ciclos", "Instrucciones"])
         self.tabla_metricas.verticalHeader().setVisible(False)
+
         self.tabla_metricas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self.tabla_metricas)
+
 
         box.setLayout(layout)
         self.layout_principal.addWidget(box)
 
         # Historial en memoria
         self.historial_metricas = []
+
+    def _crear_panel_info(self):
+        box = QGroupBox("Información en Tiempo Real")
+        layout = QVBoxLayout()
+
+        self.label_ciclo = QLabel("Ciclo actual: 0")
+        layout.addWidget(self.label_ciclo)
+
+        # Instrucciones por etapa
+        self.label_etapas = QLabel("Instrucciones en cada etapa:")
+        layout.addWidget(self.label_etapas)
+        self.text_etapas = QTextEdit()
+        self.text_etapas.setReadOnly(True)
+        layout.addWidget(self.text_etapas)
+        self.text_etapas.setFixedHeight(75)
+
+        # Memoria de datos
+        self.label_mem = QLabel("Contenido actual de memoria de datos:")
+        layout.addWidget(self.label_mem)
+        self.text_memoria = QTextEdit()
+        self.text_memoria.setReadOnly(True)
+        layout.addWidget(self.text_memoria)
+        self.text_memoria.setFixedHeight(75)
+
+        box.setLayout(layout)
+        self.layout_principal.addWidget(box)
 
     # ----------------- Lógica -----------------
 
@@ -208,15 +243,43 @@ class Pipeline1Interface(QMainWindow):
         if not self.cpu.advance_pipeline():
             self._detener_simulacion()
         self._actualizar_monitor()
+        self.ciclo_actual += 1
+        self.label_ciclo.setText(f"Ciclo actual: {self.ciclo_actual}")
 
     def _ejecutar_paso(self):
         if not self.cpu.advance_pipeline():
             self.btn_paso.setEnabled(False)
         self._actualizar_monitor()
+        self.ciclo_actual += 1
+        self.label_ciclo.setText(f"Ciclo actual: {self.ciclo_actual}")
 
     def _actualizar_monitor(self):
         self.txt_mensajes.append(f"PC actual: {self.cpu.pc}")
         self._actualizar_tiempo()
+
+        # Mostrar instrucciones en cada etapa (reconstrucción basada en los registros intermedios)
+        instrucciones = []
+
+        # Etapas tradicionales mapeadas desde los registros
+        etapas_mapeo = {
+            "IF": self.cpu.stages.get("IF_ID", {}).get("IR"),
+            "ID": self.cpu.stages.get("ID_EX", {}).get("IR"),
+            "EX": self.cpu.stages.get("EX_MEM", {}).get("IR"),
+            "MEM": self.cpu.stages.get("MEM_WB", {}).get("IR"),
+            "WB": self.cpu.stages.get("MEM_WB", {}).get("IR")  # WB usa también MEM_WB
+        }
+
+        for etapa, ir in etapas_mapeo.items():
+            texto = f"{etapa}: {str(ir) if ir else '—'}"
+            instrucciones.append(texto)
+        self.text_etapas.setText("\n".join(instrucciones))
+
+        # Mostrar contenido de la memoria de datos
+        contenido = ""
+        for i, val in enumerate(self.cpu.data_mem[:64]):
+            if val != 0:
+                contenido += f"mem[{i}] = {val}\n"
+        self.text_memoria.setText(contenido if contenido else "(memoria vacía)")
 
     def _actualizar_etapas(self, mensaje):
         if ": " in mensaje:
@@ -228,7 +291,7 @@ class Pipeline1Interface(QMainWindow):
     def _actualizar_tiempo(self):
         if self.inicio_tiempo:
             transcurrido = time.time() - self.inicio_tiempo
-            self.txt_tiempo.setPlainText(f"{transcurrido:.2f}")
+            self.label_tiempo.setText(f"Tiempo: {transcurrido:.2f}s")
 
     def _guardar_metricas(self, cpi, ciclos, instrucciones):
         if len(self.historial_metricas) >= 10:
