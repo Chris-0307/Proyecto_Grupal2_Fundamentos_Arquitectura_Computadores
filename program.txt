@@ -40,7 +40,7 @@ bne x2, x3, 2       # No se toma si x2 == x3
 add x27, x1, x0
 add x28, x2, x0
 
-# ---------- Prueba con salto absoluto ----------
+# ---------- Prueba con salto absoluto -----------
 jump 2              # PC += 2 (salta 2 instrucciones)
 add x29, x6, x0     # Se salta
 add x30, x7, x0     # Se salta
