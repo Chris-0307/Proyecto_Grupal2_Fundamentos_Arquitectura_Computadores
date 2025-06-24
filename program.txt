@@ -25,7 +25,6 @@ mul x18, x3, x6
 mul x19, x4, x8
 add x20, x18, x19
 
-# ---------- Prueba de dependencia con ADDI/SUBI ----------
 addi x21, x1, 5     # x21 = x1 + 5
 subi x22, x2, 3     # x22 = x2 - 3
 add x23, x21, x22   # RAW: necesita x21 y x22
@@ -52,3 +51,5 @@ sw x11, 8(x0)      # mem[8] = x11
 sw x14, 9(x0)      # mem[9] = x14
 sw x17, 10(x0)     # mem[10] = x17
 sw x20, 11(x0)     # mem[11] = x20
+
+lw x2, 8(x0)

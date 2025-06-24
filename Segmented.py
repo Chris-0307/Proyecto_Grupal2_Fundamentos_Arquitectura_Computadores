@@ -76,7 +76,7 @@ class SegmentedProcessor(QThread):
             case'SUB': result = a - b
             case'MUL': result = a * b
             case'SUBI': result = a - imm
-            case 'LOAD' | 'STORE': result = a + imm
+            case 'LW' | 'SW': result = a + imm
             case 'JUMP':
                 result = self.pc + imm + 1
                 self.pc = result
@@ -116,9 +116,9 @@ class SegmentedProcessor(QThread):
             address = self.stages["EX_MEM"]["ALU"]
             self.stages["MEM_WB"] = {"IR": ir, "ALU": address}
 
-            if ir.opcode == 'LOAD':
+            if ir.opcode == 'LW':
                 self.stages["MEM_WB"]["MDR"] = self.data_mem[address]
-            elif ir.opcode == 'STORE':
+            elif ir.opcode == 'SW':
                 self.data_mem[address] = self.stages["ID_EX"]["B"]
 
 
@@ -136,7 +136,7 @@ class SegmentedProcessor(QThread):
 
             if ir.opcode in ['ADD', 'SUB', 'MUL', 'AND', 'OR', 'XOR', 'SLT']:
                 self.regs[ir.rd] = alu
-            elif ir.opcode == 'LOAD':
+            elif ir.opcode == 'LW':
                 self.regs[ir.rt] = mdr
             elif ir.opcode in ['JUMP', 'BEQ', 'BNE']:
                 self.pc = alu
@@ -185,7 +185,7 @@ class SegmentedProcessor(QThread):
             dest = None
             if ir.opcode in ['ADD', 'SUB', 'MUL', 'AND', 'OR', 'XOR', 'SLT']:
                 dest = ir.rd
-            elif ir.opcode in ['ADDI', 'SUBI', 'LOAD']:
+            elif ir.opcode in ['ADDI', 'SUBI', 'LW']:
                 dest = ir.rt
             # STORE y ramas no escriben en registro
 

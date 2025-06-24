@@ -67,7 +67,7 @@ class ForwardingPipeline(QThread):
             case 'SUB': alu_result = A - B
             case 'XOR': alu_result = A ^ B
             case 'SLT': alu_result = 1 if A < B else 0
-            case 'LOAD' | 'STORE': alu_result = A + imm
+            case 'LW' | 'SW': alu_result = A + imm
             case 'JUMP':
                 alu_result = pc + imm + 1
                 self.pc = alu_result
@@ -111,9 +111,9 @@ class ForwardingPipeline(QThread):
         addr = self.pipeline_regs["EX"]["ALU"]
         self.pipeline_regs["MEM"] = {"ALU": addr, "IR": ir}
 
-        if ir.opcode == 'LOAD':
+        if ir.opcode == 'LW':
             self.pipeline_regs["MEM"]["MDR"] = self.data[addr]
-        elif ir.opcode == 'STORE':
+        elif ir.opcode == 'SW':
             self.data[addr] = self.pipeline_regs["ID"]["B"]
 
         self.statusSignal.emit(f"Memory: MDR = {self.pipeline_regs['MEM'].get('MDR', 'N/A')}")
@@ -128,7 +128,7 @@ class ForwardingPipeline(QThread):
 
         if ir.opcode in ['ADD', 'SUB', 'AND', 'OR', 'XOR', 'SLT', 'MUL']:
             self.registers[ir.rd] = alu
-        elif ir.opcode == 'LOAD':
+        elif ir.opcode == 'LW':
             self.registers[ir.rt] = mdr
         elif ir.opcode in ['ADDI', 'SUBI']:
             self.registers[ir.rt] = alu

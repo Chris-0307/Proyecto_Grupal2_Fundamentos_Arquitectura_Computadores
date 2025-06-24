@@ -23,14 +23,14 @@ def parse_riscv_code(filename):
                 offset, base = parts[2].split('(')
                 imm = int(offset)
                 rs = int(base.strip('x)'))
-                instructions.append(Instruction('LOAD', rs=rs, rt=rt, imm=imm))
+                instructions.append(Instruction('LW', rs=rs, rt=rt, imm=imm))
 
             elif opcode == 'SW':
                 rt = int(parts[1][1:])
                 offset, base = parts[2].split('(')
                 imm = int(offset)
                 rs = int(base.strip('x)'))
-                instructions.append(Instruction('STORE', rs=rs, rt=rt, imm=imm))
+                instructions.append(Instruction('SW', rs=rs, rt=rt, imm=imm))
 
             elif opcode == 'ADD':
                 rd = int(parts[1][1:])
