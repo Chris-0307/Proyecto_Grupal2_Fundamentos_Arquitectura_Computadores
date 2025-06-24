@@ -200,8 +200,8 @@ class Pipeline1Interface(QMainWindow):
         self._actualizar_tiempo()
         # Calcular y guardar métricas
         total_inst = self.cpu.total_instructions
-        total_ciclos = self.cpu.inactive_cycles + self.cpu.pc  # o usa cpu.total_cycles si lo tienes
-        cpi = total_ciclos / total_inst if total_inst > 0 else 0
+        total_ciclos = self.cpu.total_cycles
+        cpi = total_ciclos / total_inst
         self._guardar_metricas(cpi, total_ciclos, total_inst)
 
     def _ejecutar_ciclo(self):

@@ -199,9 +199,9 @@ class Pipeline2Interface(QMainWindow):
         self.btn_iniciar.setEnabled(True)
         self.btn_detener.setEnabled(False)
         self._actualizar_tiempo()
-        total_inst = self.cpu.inst_count
-        total_ciclos = self.cpu.inactive_cycles + self.cpu.pc
-        cpi = total_ciclos / total_inst if total_inst > 0 else 0
+        total_inst = self.cpu.total_inst
+        total_ciclos = self.cpu.total_cycles
+        cpi = total_ciclos / total_inst
         self._guardar_metricas(cpi, total_ciclos, total_inst)
 
     def _ejecutar_ciclo(self):

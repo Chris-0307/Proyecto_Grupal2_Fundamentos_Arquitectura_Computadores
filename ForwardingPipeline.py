@@ -19,11 +19,27 @@ class ForwardingPipeline(QThread):
         self.memory[:len(combined)] = combined
         self.inactive_cycles = 0
         self.data = [0] * 1024
+        self.total_cycles = 0
         self.pc = 0
         self.pipeline_regs = {
             "IF": {}, "ID": {}, "EX": {}, "MEM": {}, "WB": {}
         }
         self.inst_count = self._separate_memory()
+        self.total_inst = self.inst_count
+        self.latencias = {
+            "IF": 1,
+            "ID": 1,
+            "EX": 1,
+            "MEM": 3,  # 🔥 Más lenta
+            "WB": 1
+        }
+        self.etapa_en_espera = {
+            "IF": 0,
+            "ID": 0,
+            "EX": 0,
+            "MEM": 0,
+            "WB": 0
+        }
 
     def _separate_memory(self):
         count = 0
@@ -153,11 +169,14 @@ class ForwardingPipeline(QThread):
         self._decode()
         self._fetch()
 
+        self.total_cycles += 1
+
         active = any(reg.get("IR") for reg in self.pipeline_regs.values())
 
         if not active and self.pc >= self.inst_count:
             self.inactive_cycles += 1
         else:
             self.inactive_cycles = 0
+
 
         return self.inactive_cycles < 2

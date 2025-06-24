@@ -2,7 +2,6 @@ import time
 from memory import *
 from PyQt5.QtCore import QThread, pyqtSignal
 
-
 class SegmentedProcessor(QThread):
     statusSignal = pyqtSignal(str)
 
@@ -29,6 +28,7 @@ class SegmentedProcessor(QThread):
             "MEM_WB": {}        # Memory - WriteBack
         }
         self.total_instructions = self._load_mem()
+        self.total_cycles = 0
 
 # Separa instrucciones y datos en memoria; retorna el total de instrucciones cargadas
     def _load_mem(self):
@@ -157,6 +157,8 @@ class SegmentedProcessor(QThread):
         else:
             self.stage_decode()
             self.stage_fetch()
+
+        self.total_cycles += 1
 
         active = any(stage.get("IR") for stage in self.stages.values())
 

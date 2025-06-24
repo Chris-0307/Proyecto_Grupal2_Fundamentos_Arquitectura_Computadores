@@ -1,2 +1,55 @@
+# ---------- Carga de datos ----------
 lw x1, 0(x0)
-add x2, x1, x3
+lw x2, 1(x0)
+lw x3, 2(x0)
+lw x4, 3(x0)
+lw x5, 4(x0)
+lw x6, 5(x0)
+lw x7, 6(x0)
+lw x8, 7(x0)
+
+
+mul x9, x1, x5     # x9 = x1 * x5
+mul x10, x2, x7    # x10 = x2 * x7
+add x11, x9, x10   # RAW: necesita x9 y x10 aún no escritos
+
+mul x12, x1, x6    # x12 = x1 * x6
+mul x13, x2, x8    # x13 = x2 * x8
+add x14, x12, x13  # RAW: depende de x12 y x13
+
+mul x15, x3, x5
+mul x16, x4, x7
+add x17, x15, x16
+
+mul x18, x3, x6
+mul x19, x4, x8
+add x20, x18, x19
+
+addi x21, x1, 5     # x21 = x1 + 5
+subi x22, x2, 3     # x22 = x2 - 3
+add x23, x21, x22   # RAW: necesita x21 y x22
+
+# ---------- Prueba con ramas ----------
+beq x1, x1, 2       # Salta 2 instrucciones si x1 == x1
+add x24, x1, x0     # (se salta si el salto se toma)
+add x25, x2, x0
+
+add x26, x1, x0
+
+bne x2, x3, 2       # No se toma si x2 == x3
+add x27, x1, x0
+add x28, x2, x0
+
+# ---------- Prueba con salto absoluto ----------
+jump 2              # PC += 2 (salta 2 instrucciones)
+add x29, x6, x0     # Se salta
+add x30, x7, x0     # Se salta
+add x31, x1, x2     # Se ejecuta
+
+# ---------- Escritura en memoria ----------
+sw x11, 8(x0)      # mem[8] = x11
+sw x14, 9(x0)      # mem[9] = x14
+sw x17, 10(x0)     # mem[10] = x17
+sw x20, 11(x0)     # mem[11] = x20
+
+lw x2, 8(x0)
