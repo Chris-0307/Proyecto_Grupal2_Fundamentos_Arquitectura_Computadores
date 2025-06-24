@@ -4,8 +4,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QPushButton, QGroupBox
 )
 from PyQt5.QtGui import QFont
-from interfaces.Single_ui import UniCycleInterface
-from interfaces.Multi_ui import MultiCycleInterface
 from interfaces.Segmented_ui import Pipeline1Interface
 from interfaces.Forwarding_ui import Pipeline2Interface
 
@@ -22,8 +20,6 @@ class MainSimulatorWindow(QMainWindow):
 
         self._inicializar_ui()
 
-        self.ventana_uniciclo = None
-        self.ventana_multiciclo = None
         self.ventana_pipeline1 = None
         self.ventana_pipeline2 = None
 
@@ -49,16 +45,12 @@ class MainSimulatorWindow(QMainWindow):
         layout_botones.setSpacing(20)
 
         # Crear y aplicar estilo a los botones
-        self.btn_uniciclo = self._crear_boton("Uniciclo")
-        self.btn_multiciclo = self._crear_boton("Multiciclo")
         self.btn_pipeline1 = self._crear_boton("Pipeline Básico")
         self.btn_pipeline2 = self._crear_boton("Pipeline con Forwarding")
 
-        for btn in [self.btn_uniciclo, self.btn_multiciclo, self.btn_pipeline1, self.btn_pipeline2]:
+        for btn in [self.btn_pipeline1, self.btn_pipeline2]:
             layout_botones.addWidget(btn)
 
-        self.btn_uniciclo.clicked.connect(self.abrir_uniciclo)
-        self.btn_multiciclo.clicked.connect(self.abrir_multiciclo)
         self.btn_pipeline1.clicked.connect(self.abrir_pipeline1)
         self.btn_pipeline2.clicked.connect(self.abrir_pipeline2)
 
@@ -84,16 +76,6 @@ class MainSimulatorWindow(QMainWindow):
         """)
         return btn
 
-    # --- Métodos para abrir interfaces específicas ---
-    def abrir_uniciclo(self):
-        if not self.ventana_uniciclo:
-            self.ventana_uniciclo = UniCycleInterface()
-        self.ventana_uniciclo.show()
-
-    def abrir_multiciclo(self):
-        if not self.ventana_multiciclo:
-            self.ventana_multiciclo = MultiCycleInterface()
-        self.ventana_multiciclo.show()
 
     def abrir_pipeline1(self):
         if not self.ventana_pipeline1:

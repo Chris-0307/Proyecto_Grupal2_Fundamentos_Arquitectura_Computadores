@@ -68,9 +68,7 @@ class SegmentedProcessor(QThread):
     def stage_execute(self):
         ir = self.stages["ID_EX"].get("IR")
         if ir:
-            a = self.stages["ID_EX"]["A"]
-            b = self.stages["ID_EX"]["B"]
-            imm = ir.imm
+            a, b, imm = self.stages["ID_EX"]["A"], self.stages["ID_EX"]["B"], ir.imm
             result = 0
 
             match ir.opcode:
