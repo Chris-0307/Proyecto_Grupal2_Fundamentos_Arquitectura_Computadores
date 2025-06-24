@@ -47,7 +47,6 @@ class SegmentedProcessor(QThread):
     def stage_fetch(self):
         if self.pc < self.total_instructions:
             self.stages["IF_ID"]["IR"] = self.instr_mem[self.pc]
-            print(f"[FETCH] PC={self.pc}, IR={self.instr_mem[self.pc]}")
             self.stages["IF_ID"]["NPC"] = self.pc + 1
             self.pc += 1
             self.statusSignal.emit(f"Fetch: {self.stages['IF_ID']['IR']}")
@@ -59,7 +58,6 @@ class SegmentedProcessor(QThread):
         ir = self.stages["IF_ID"].get("IR")
         if ir:
             self.stages["ID_EX"] = {"A": self.regs[ir.rs],"B": self.regs[ir.rt],"IR": ir}
-            print(f"[DECODE] IR={ir}, rs=R{ir.rs}={self.regs[ir.rs]}, rt=R{ir.rt}={self.regs[ir.rt]}")
             self.statusSignal.emit(f"Decode: A = {self.stages['ID_EX']['A']}, B = {self.stages['ID_EX']['B']}")
         else:
             self.stages["ID_EX"]["IR"] = None
@@ -67,30 +65,48 @@ class SegmentedProcessor(QThread):
 # Realiza la operación ALU correspondiente
     def stage_execute(self):
         ir = self.stages["ID_EX"].get("IR")
-        if ir:
-            a, b, imm = self.stages["ID_EX"]["A"], self.stages["ID_EX"]["B"], ir.imm
-            result = 0
-
-            match ir.opcode:
-                case 'ADD': result = a + b
-                case 'SUB': result = a - b
-                case 'MUL': result = a * b
-                case 'LOAD' | 'STORE': result = a + imm
-                case 'JUMP': result = self.pc + imm
-                case 'BEQ': result = self.pc + imm if a == b else self.pc
-                case 'BNE': result = self.pc + imm if a != b else self.pc
-                case 'AND': result = a & b
-                case 'OR': result = a | b
-                case 'XOR': result = a ^ b
-                case 'SLT': result = 1 if a < b else 0
-                case 'ADDI': result = a + imm
-                case 'SUBI': result = a - imm
-
-            print(f"[EXECUTE] IR={ir}, A={a}, B={b}, Result={result}")
-            self.stages["EX_MEM"] = {"ALU": result,"IR": ir}
-            self.statusSignal.emit(f"Execute: ALU = {result}")
-        else:
+        if not ir:
             self.stages["EX_MEM"]["IR"] = None
+            return
+
+        a, b, imm = self.stages["ID_EX"]["A"], self.stages["ID_EX"]["B"], ir.imm
+        result = 0
+
+        match ir.opcode:
+            case 'ADD':result = a + b
+            case 'SUB': result = a - b
+            case 'MUL': result = a * b
+            case 'LOAD' | 'STORE': result = a + imm
+            case 'JUMP':
+                result = self.pc + imm + 1
+                self.pc = result
+                self.stages["IF_ID"] = {"IR": None}
+                self.stages["ID_EX"] = {"IR": None}
+                self.statusSignal.emit(f"Jump taken: PC = {self.pc}, flushed IF/ID and ID/EX")
+            case 'BEQ':
+                if a == b:
+                    result = self.pc + imm - 1
+                    self.pc = result
+                    self.stages["IF_ID"] = {"IR": None}
+                    self.stages["ID_EX"] = {"IR": None}
+            case 'BNE':
+                if a != b:
+                    result = self.pc + imm + 1
+                    self.pc = result
+                    self.stages["IF_ID"] = {"IR": None}
+                    self.stages["ID_EX"] = {"IR": None}
+                    self.statusSignal.emit(f"Branch taken (BNE): PC = {self.pc}, flushed IF/ID and ID/EX")
+                else:
+                    result = self.pc
+            case 'AND': result = a & b
+            case 'OR': result = a | b
+            case 'XOR': result = a ^ b
+            case 'SLT': result = 1 if a < b else 0
+            case 'ADDI': result = a + imm
+            case 'SUBI': result = a - imm
+
+        self.stages["EX_MEM"] = {"ALU": result,"IR": ir}
+        self.statusSignal.emit(f"Execute: ALU = {result}")
 
 # Accede a memoria de datos si corresponde (LOAD o STORE)
     def stage_memory(self):
@@ -101,7 +117,6 @@ class SegmentedProcessor(QThread):
 
             if ir.opcode == 'LOAD':
                 self.stages["MEM_WB"]["MDR"] = self.data_mem[address]
-                print(f"[MEMORY] LOAD from addr {address} → {self.data_mem[address]}")
             elif ir.opcode == 'STORE':
                 self.data_mem[address] = self.stages["ID_EX"]["B"]
 
@@ -174,6 +189,7 @@ class SegmentedProcessor(QThread):
             # STORE y ramas no escriben en registro
 
             if dest and dest in src_regs:
+                print(f"⛔ DATA HAZARD: {decode_ir.opcode} necesita R{dest} aún no escrito")
                 return True  # ¡hazard detectado!
 
         return False
@@ -183,5 +199,4 @@ class SegmentedProcessor(QThread):
         ir = self.stages["IF_ID"].get("IR")
         msg = f"⚠ STALL: Instrucción {ir} necesita datos aún no escritos."
         self.stages["ID_EX"] = {"IR": None}
-        self.stages["IF_ID"] = {"IR": None}
         self.statusSignal.emit(msg)

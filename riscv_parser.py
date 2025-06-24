@@ -74,7 +74,7 @@ def parse_riscv_code(filename):
                 imm = int(parts[3])
                 instructions.append(Instruction('BNE', rs=rs, rt=rt, imm=imm))
 
-            elif opcode == 'J':
+            elif opcode == 'JUMP':
                 imm = int(parts[1])
                 instructions.append(Instruction('JUMP', imm=imm))
 
