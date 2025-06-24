@@ -73,9 +73,9 @@ class SegmentedProcessor(QThread):
         result = 0
 
         match ir.opcode:
-            case 'ADD':result = a + b
-            case 'SUB': result = a - b
-            case 'MUL': result = a * b
+            case'SUB': result = a - b
+            case'MUL': result = a * b
+            case'SUBI': result = a - imm
             case 'LOAD' | 'STORE': result = a + imm
             case 'JUMP':
                 result = self.pc + imm + 1
@@ -103,7 +103,8 @@ class SegmentedProcessor(QThread):
             case 'XOR': result = a ^ b
             case 'SLT': result = 1 if a < b else 0
             case 'ADDI': result = a + imm
-            case 'SUBI': result = a - imm
+            case 'ADD': result = a + b
+
 
         self.stages["EX_MEM"] = {"ALU": result,"IR": ir}
         self.statusSignal.emit(f"Execute: ALU = {result}")

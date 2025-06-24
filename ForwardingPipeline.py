@@ -64,26 +64,10 @@ class ForwardingPipeline(QThread):
         alu_result = 0
 
         match ir.opcode:
-            case 'ADD':
-                alu_result = A + B
-            case 'SUB':
-                alu_result = A - B
-            case 'MUL':
-                alu_result = A * B
-            case 'AND':
-                alu_result = A & B
-            case 'OR':
-                alu_result = A | B
-            case 'XOR':
-                alu_result = A ^ B
-            case 'SLT':
-                alu_result = 1 if A < B else 0
-            case 'ADDI':
-                alu_result = A + imm
-            case 'SUBI':
-                alu_result = A - imm
-            case 'LOAD' | 'STORE':
-                alu_result = A + imm
+            case 'SUB': alu_result = A - B
+            case 'XOR': alu_result = A ^ B
+            case 'SLT': alu_result = 1 if A < B else 0
+            case 'LOAD' | 'STORE': alu_result = A + imm
             case 'JUMP':
                 alu_result = pc + imm + 1
                 self.pc = alu_result
@@ -108,8 +92,12 @@ class ForwardingPipeline(QThread):
                     self.statusSignal.emit(f"Branch taken (BNE) → PC = {self.pc}")
                 else:
                     alu_result = pc
-            case _:
-                alu_result = 0  # Instrucción no reconocida
+            case 'ADD': alu_result = A + B
+            case 'MUL': alu_result = A * B
+            case 'AND': alu_result = A & B
+            case 'OR': alu_result = A | B
+            case 'ADDI': alu_result = A + imm
+            case 'SUBI': alu_result = A - imm
 
         self.pipeline_regs["EX"] = {"ALU": alu_result, "IR": ir}
         self.statusSignal.emit(f"Execute: ALU = {alu_result}")
